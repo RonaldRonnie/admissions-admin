@@ -1,0 +1,66 @@
+# Builds the console and publishes it to GitHub Pages on every push to main.
+#
+# One-time setup in the GitHub repository:
+#   1. Settings -> Pages -> Build and deployment -> Source: GitHub Actions.
+#   2. Settings -> Secrets and variables -> Actions -> Variables -> New repository variable:
+#        API_BASE_URL = https://<your-api-host>/api
+#      (a variable, not a secret: it ends up in the published JavaScript either way).
+#
+# The site is then served at https://<owner>.github.io/<repo>/, and that origin
+# (https://<owner>.github.io, no path) must be in the API's ALLOWED_ORIGINS.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a running deploy finish rather than cancelling it half-published.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      - name: Build
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_BASE_URL }}
+        # Without it the site still publishes, and its sign-in page says no API is configured;
+        # set the variable and re-run this workflow to point it at the API.
+        run: |
+          if [ -z "$VITE_API_BASE_URL" ]; then
+            echo "::warning::Repository variable API_BASE_URL is not set (Settings -> Secrets and variables -> Actions -> Variables). The console will publish but cannot sign in."
+          fi
+          npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
