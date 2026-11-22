@@ -206,3 +206,179 @@ export interface AdminHealth {
   message: string;
   timestamp: number;
 }
+
+// ---- Organisation (SchoolController, DepartmentController, CourseController, CourseUnitController) ----
+
+/** Entities the API embeds whole; only the parts the panel reads are typed. */
+export interface Ref {
+  id: string;
+  name?: string;
+  code?: string;
+}
+
+export interface School {
+  id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  status?: string | null;
+  deanName?: string | null;
+  deanEmail?: string | null;
+  deanPhone?: string | null;
+  deanUserId?: string | null;
+}
+
+export interface Department {
+  id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  status?: string | null;
+  school?: Ref | null;
+  hodName?: string | null;
+  hodEmail?: string | null;
+  hodPhone?: string | null;
+  headUserId?: string | null;
+}
+
+/** AcademicLeadershipService#candidates: enabled staff accounts that may head a department or lead a school. */
+export interface LeaderCandidate {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
+
+export interface Course {
+  id: string;
+  courseCode: string;
+  name: string;
+  description?: string | null;
+  type?: string | null;
+  mode?: string | null;
+  durationMonths?: number | null;
+  numberOfYears?: number | null;
+  creditsRequired?: number | null;
+  status?: string | null;
+  school?: Ref | null;
+  department?: Ref | null;
+}
+
+export interface CourseUnit {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  course?: (Ref & { courseCode?: string }) | null;
+  school?: Ref | null;
+  department?: Ref | null;
+  credits?: number | null;
+  semester?: string | null;
+  year?: number | null;
+  status?: string | null;
+  optional?: boolean;
+  assignedLecturer?: Pick<User, "id" | "firstName" | "lastName" | "email"> | null;
+}
+
+// ---- Academic calendar (AcademicYearController, SemesterController) ----
+
+export interface AcademicYear {
+  id: string;
+  /** "YYYY-YYYY". */
+  name: string;
+  startDate: string;
+  endDate: string;
+  status?: string | null;
+  current?: boolean;
+  description?: string | null;
+  /** The embedded term list; sent back untouched on update. */
+  semesters?: unknown[];
+}
+
+export interface Semester {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status?: string | null;
+  current?: boolean;
+  academicYear?: Ref | null;
+}
+
+// ---- Reference data (ClassroomController, LookupValueController, SetupExaminationController) ----
+
+export interface Classroom {
+  id: string;
+  roomNumber: string;
+  building?: string | null;
+  campus?: Ref | null;
+  capacity?: number | null;
+  description?: string | null;
+  active: boolean;
+}
+
+export interface LookupCategory {
+  key: string;
+  displayName: string;
+  permissionKey: string;
+}
+
+export interface LookupValue {
+  id: string;
+  name: string;
+  code?: string | null;
+  description?: string | null;
+  sortOrder: number;
+  active: boolean;
+}
+
+/** SetupExaminationController.EXAMINATION_TYPES. */
+export const EXAMINATION_TYPES = ["CAT", "Midterm Exam", "Final Exam", "Practical Exam"] as const;
+
+export interface Examination {
+  id: string;
+  title: string;
+  type: string;
+  course?: (Ref & { courseCode?: string }) | null;
+  description?: string | null;
+  maxMarks: number;
+  weight: number;
+  passingMarks?: number | null;
+  dueDate: ApiDateTime;
+  durationMinutes?: number | null;
+  academicYear: string;
+  semester: string;
+  status?: string | null;
+  instructions?: string | null;
+  /** Sent back untouched on update: AssessmentService#update overwrites both. */
+  learningOutcomes?: unknown[];
+  skillsAssessed?: unknown[];
+}
+
+// ---- Setup reports (SetupReportsController) ----
+
+/** SetupReportService registers these nine; the order is the Setup menu's. */
+export const SETUP_REPORTS = [
+  { key: "campus-info", title: "Campus Info" },
+  { key: "classroom-info", title: "Classroom Info" },
+  { key: "courses-offered", title: "Courses Offered" },
+  { key: "departments-info", title: "Departments Info" },
+  { key: "examination-creations", title: "Examination Creations" },
+  { key: "fes-setup", title: "Fee Structure Setup" },
+  { key: "institution-info", title: "Institution Info" },
+  { key: "subject-assignment-info", title: "Subject Assignment Info" },
+  { key: "subjects-info", title: "Subjects Info" },
+] as const;
+
+export interface ReportDefinition {
+  key: string;
+  title: string;
+  description: string;
+  columns: { key: string; header: string; filter: boolean }[];
+  filterOptions: Record<string, string[]>;
+}
+
+export interface DatabaseHealth {
+  status: string;
+  details: Record<string, unknown>;
+}

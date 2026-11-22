@@ -8,7 +8,9 @@ import { Badge, Button, EmptyState, ErrorBanner, Loading, PageHeader } from "../
 import { formatDateTime, fullName, humanize, STATUS_TONE, toDate } from "../lib/format";
 import { ACTION_LABELS, actionsFor, useAccountActions } from "./users/accountActions";
 import { BulkGrantModal } from "./users/BulkGrantModal";
+import { ResetPasswordModal } from "./users/ResetPasswordModal";
 import { UserFormModal } from "./users/UserFormModal";
+import { downloadText, stamp, toCsv } from "../lib/csv";
 
 const PAGE_SIZE = 25;
 
@@ -25,6 +27,7 @@ export function UsersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [editing, setEditing] = useState<User | null | undefined>(undefined); // undefined = closed, null = new
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [resetting, setResetting] = useState<User | null>(null);
 
   const filtered = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -64,6 +67,27 @@ export function UsersPage() {
         actions={
           <>
             {selected.size > 0 && <Button onClick={() => setBulkOpen(true)}>Grant access to {selected.size} selected</Button>}
+            <Button
+              disabled={filtered.length === 0}
+              onClick={() =>
+                downloadText(
+                  `users-${stamp()}.csv`,
+                  toCsv(filtered, [
+                    { header: "First name", value: (u) => u.firstName },
+                    { header: "Last name", value: (u) => u.lastName },
+                    { header: "Email", value: (u) => u.email },
+                    { header: "Phone", value: (u) => u.phone },
+                    { header: "Role", value: (u) => ROLE_LABELS[u.role] ?? u.role },
+                    { header: "Status", value: (u) => humanize(u.accountStatus) },
+                    { header: "Enabled", value: (u) => (u.enabled ? "Yes" : "No") },
+                    { header: "Created", value: (u) => toDate(u.createdAt)?.toISOString() },
+                    { header: "Last sign-in", value: (u) => toDate(u.lastLogin)?.toISOString() },
+                  ]),
+                )
+              }
+            >
+              Export CSV ({filtered.length})
+            </Button>
             <Button variant="primary" onClick={() => setEditing(null)}>
               New staff account
             </Button>
@@ -162,6 +186,11 @@ export function UsersPage() {
                         <Button size="sm" onClick={() => setEditing(u)}>
                           Edit
                         </Button>
+                        {u.role !== "APPLICANT" && u.accountStatus !== "PENDING" && (
+                          <Button size="sm" onClick={() => setResetting(u)}>
+                            Reset password
+                          </Button>
+                        )}
                         <Link to={`/users/${u.id}/access`} className="rounded-md border border-slate-300 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50">
                           Access
                         </Link>
@@ -205,6 +234,7 @@ export function UsersPage() {
       {editing !== undefined && (
         <UserFormModal key={editing?.id ?? "new"} user={editing} open selfId={selfId} onClose={() => setEditing(undefined)} />
       )}
+      {resetting && <ResetPasswordModal user={resetting} onClose={() => setResetting(null)} />}
       {bulkOpen && (
         <BulkGrantModal
           users={selectedUsers}

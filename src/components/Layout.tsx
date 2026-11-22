@@ -6,7 +6,13 @@ import { useAuth } from "../auth/AuthContext";
 import { fullName } from "../lib/format";
 
 const NAV: { section: string; items: { to: string; label: string; end?: boolean }[] }[] = [
-  { section: "Overview", items: [{ to: "/", label: "Dashboard", end: true }] },
+  {
+    section: "Overview",
+    items: [
+      { to: "/", label: "Dashboard", end: true },
+      { to: "/health", label: "System health" },
+    ],
+  },
   {
     section: "People",
     items: [
@@ -22,13 +28,32 @@ const NAV: { section: string; items: { to: string; label: string; end?: boolean 
     ],
   },
   {
-    section: "Setup",
+    section: "Organisation",
     items: [
-      { to: "/campuses", label: "Campuses" },
-      { to: "/intakes", label: "Intakes" },
+      { to: "/schools", label: "Schools" },
+      { to: "/departments", label: "Departments" },
+      { to: "/courses", label: "Courses" },
+      { to: "/course-units", label: "Course units" },
     ],
   },
-  { section: "Oversight", items: [{ to: "/audit", label: "Audit log" }] },
+  {
+    section: "Setup",
+    items: [
+      { to: "/calendar", label: "Academic calendar" },
+      { to: "/campuses", label: "Campuses" },
+      { to: "/classrooms", label: "Buildings & classrooms" },
+      { to: "/intakes", label: "Intakes" },
+      { to: "/examinations", label: "Examinations" },
+      { to: "/lookups", label: "Reference lists" },
+    ],
+  },
+  {
+    section: "Oversight",
+    items: [
+      { to: "/reports", label: "Setup reports" },
+      { to: "/audit", label: "Audit log" },
+    ],
+  },
 ];
 
 export function Layout() {

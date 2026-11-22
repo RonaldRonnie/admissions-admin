@@ -5,7 +5,9 @@ import { Badge, Checkbox } from "./ui";
 export const EMPTY_GRANTS: GrantSet = { moduleKeys: [], excludedPermissionKeys: [], permissionKeys: [], roleTemplateKeys: [] };
 
 const ADMIN_MODULE = "admin";
+const STUDENT_MODULE = "student";
 const isAdminKey = (key: string) => key.startsWith("admin:");
+const isStudentKey = (key: string) => key.startsWith("student:");
 
 function toggle(list: string[], key: string, on: boolean): string[] {
   const without = list.filter((k) => k !== key);
@@ -23,6 +25,7 @@ export function GrantsEditor({
   value,
   onChange,
   allowAdminScope,
+  allowStudentScope = true,
 }: {
   catalog: CatalogModule[];
   templates: RoleTemplate[];
@@ -30,6 +33,8 @@ export function GrantsEditor({
   onChange: (next: GrantSet) => void;
   /** The backend refuses admin:* grants for anyone whose role is not ADMIN. */
   allowAdminScope: boolean;
+  /** ...and student:* grants for anyone whose role is not STUDENT (validateStudentScope). */
+  allowStudentScope?: boolean;
 }) {
   const [filter, setFilter] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -74,7 +79,11 @@ export function GrantsEditor({
     });
   }
 
-  const adminLocked = (key: string) => !allowAdminScope && (key === ADMIN_MODULE || isAdminKey(key));
+  const lockReason = (key: string): string | null => {
+    if (!allowAdminScope && (key === ADMIN_MODULE || isAdminKey(key))) return "ADMIN-role accounts only";
+    if (!allowStudentScope && (key === STUDENT_MODULE || isStudentKey(key))) return "STUDENT accounts only";
+    return null;
+  };
 
   return (
     <div className="space-y-6">
@@ -84,12 +93,13 @@ export function GrantsEditor({
           <p className="mb-3 text-xs text-slate-500">Reusable bundles. A template's permissions (and its parent's) are added on top of everything below.</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {templates.map((t) => {
-              const locked = !allowAdminScope && t.permissionKeys.some(isAdminKey);
+              const reason = t.permissionKeys.map(lockReason).find(Boolean);
+              const locked = Boolean(reason);
               return (
                 <Checkbox
                   key={t.key}
                   label={t.displayName}
-                  description={locked ? "Contains admin permissions: ADMIN-role accounts only" : t.description || t.key}
+                  description={locked ? `Contains permissions for ${reason}` : t.description || t.key}
                   checked={value.roleTemplateKeys.includes(t.key)}
                   disabled={locked && !value.roleTemplateKeys.includes(t.key)}
                   onChange={(on) => onChange({ ...value, roleTemplateKeys: toggle(value.roleTemplateKeys, t.key, on) })}
@@ -110,7 +120,7 @@ export function GrantsEditor({
             const whole = value.moduleKeys.includes(module.key);
             const onCount = module.permissions.filter(isOn).length;
             const expanded = open[module.key] ?? filter.trim() !== "";
-            const locked = adminLocked(module.key);
+            const locked = lockReason(module.key);
             return (
               <div key={module.key}>
                 <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">
@@ -121,13 +131,17 @@ export function GrantsEditor({
                     aria-expanded={expanded}
                   >
                     <span className="w-3 text-slate-400">{expanded ? "▾" : "▸"}</span>
-                    <span className="font-medium text-slate-800">{module.displayName}</span>
-                    <span className="text-xs text-slate-500">
-                      {onCount}/{module.permissions.length} on
+                    <span className="min-w-0">
+                      <span className="font-medium text-slate-800">{module.displayName}</span>{" "}
+                      <span className="text-xs text-slate-500">
+                        {onCount}/{module.permissions.length} on
+                      </span>
+                      {module.description && <span className="block truncate text-xs text-slate-500">{module.description}</span>}
                     </span>
                   </button>
-                  {locked ? (
-                    <Badge>ADMIN-role accounts only</Badge>
+                  {/* A locked module already granted stays untickable, so it can be taken away. */}
+                  {locked && !whole ? (
+                    <Badge>{locked}</Badge>
                   ) : (
                     <Checkbox label="Whole module" checked={whole} onChange={(on) => setModule(module, on)} />
                   )}
@@ -138,7 +152,7 @@ export function GrantsEditor({
                       <Checkbox
                         key={p.key}
                         checked={isOn(p)}
-                        disabled={p.group === "SHARED" || adminLocked(p.key)}
+                        disabled={p.group === "SHARED" || (Boolean(lockReason(p.key)) && !isOn(p))}
                         onChange={(on) => setPermission(p, on)}
                         label={
                           <span className="inline-flex flex-wrap items-center gap-1.5">

@@ -87,6 +87,7 @@ export function BulkGrantModal({
             value={grants}
             onChange={setGrants}
             allowAdminScope={allAdmins}
+            allowStudentScope={users.length > 0 && users.every((u) => u.role === "STUDENT")}
           />
         )}
       </div>

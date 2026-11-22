@@ -3,9 +3,26 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { listAuditLogs } from "../api/endpoints";
 import { AUDIT_ACTIONS, type AuditLog } from "../api/types";
 import { Badge, Button, EmptyState, ErrorBanner, Loading, Modal, PageHeader } from "../components/ui";
-import { formatDateTime, fullName, humanize, type Tone } from "../lib/format";
+import { useToast } from "../components/Toast";
+import { downloadText, stamp, toCsv } from "../lib/csv";
+import { formatDateTime, fullName, humanize, toDate, type Tone } from "../lib/format";
 
 const LIMIT = 50;
+/** Rows per request (AuditLogController caps a page at 200) and a ceiling on pages per export. */
+const EXPORT_PAGE = 100;
+const EXPORT_MAX_PAGES = 100;
+
+async function fetchAll(action: string): Promise<AuditLog[]> {
+  const rows: AuditLog[] = [];
+  for (let page = 1; page <= EXPORT_MAX_PAGES; page++) {
+    const body = await listAuditLogs(page, EXPORT_PAGE, action || undefined);
+    rows.push(...(body.data ?? []));
+    if (page >= (body.meta?.pagination?.totalPages ?? 1)) break;
+  }
+  return rows;
+}
+
+const who = (u: AuditLog["performedBy"]) => (u ? `${fullName(u)} <${u.email}>` : "");
 
 function actionTone(action: string): Tone {
   if (/REJECTED|SUSPENDED|DEACTIVATED/.test(action)) return "red";
@@ -28,6 +45,32 @@ export function AuditLogPage() {
   const [page, setPage] = useState(1);
   const [action, setAction] = useState("");
   const [open, setOpen] = useState<AuditLog | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const toast = useToast();
+
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      const all = await fetchAll(action);
+      downloadText(
+        `audit-log-${action ? `${action.toLowerCase()}-` : ""}${stamp()}.csv`,
+        toCsv(all, [
+          { header: "When", value: (l) => toDate(l.timestamp)?.toISOString() },
+          { header: "Action", value: (l) => l.action },
+          { header: "By", value: (l) => who(l.performedBy) },
+          { header: "Account", value: (l) => who(l.targetUser) },
+          { header: "Entity", value: (l) => [l.entityType, l.entityId].filter(Boolean).join(" ") },
+          { header: "Details", value: (l) => (l.details && Object.keys(l.details).length ? JSON.stringify(l.details) : "") },
+          { header: "IP address", value: (l) => l.ipAddress },
+        ]),
+      );
+      toast.success(`Exported ${all.length} entries.`);
+    } catch (error) {
+      toast.error(error);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const logs = useQuery({
     queryKey: ["audit", page, action],
@@ -39,7 +82,15 @@ export function AuditLogPage() {
 
   return (
     <>
-      <PageHeader title="Audit log" description="Who changed which account or access, and when. Newest first. Entries cannot be edited or removed." />
+      <PageHeader
+        title="Audit log"
+        description="Who changed which account or access, and when. Newest first. Entries cannot be edited or removed."
+        actions={
+          <Button onClick={exportCsv} busy={exporting} disabled={!pagination?.total}>
+            Export CSV{action ? ` (${humanize(action)})` : ""}
+          </Button>
+        }
+      />
       <div className="card">
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 p-4">
           <select
