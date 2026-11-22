@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError, request, requestData } from "./client";
+import { ApiError, request, requestData, requestText } from "./client";
 import { getSession, setSession } from "./session";
 
 const json = (status: number, body: unknown) =>
@@ -31,6 +31,15 @@ describe("api client", () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://api.example.org/api/admin/users?page=2");
     expect((init?.headers as Record<string, string>).Authorization).toBe("Bearer old");
+  });
+
+  it("asks for CSV and returns the body as text, even when it looks like JSON", async () => {
+    fetchMock.mockResolvedValueOnce(new Response("123", { status: 200, headers: { "Content-Type": "text/csv" } }));
+
+    await expect(requestText("/setup/reports/campus-info/csv")).resolves.toBe("123");
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect((init?.headers as Record<string, string>).Accept).toContain("text/csv");
   });
 
   it("refreshes once on a 401 and retries with the new token", async () => {

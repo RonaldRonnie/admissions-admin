@@ -26,6 +26,10 @@ export interface RequestOptions {
   query?: Query;
   /** Send the bearer token and retry once through /auth/refresh on a 401. Default true. */
   auth?: boolean;
+  /** Accept header; JSON unless the endpoint produces something else (the CSV exports). */
+  accept?: string;
+  /** Return the body as text instead of parsing JSON. */
+  text?: boolean;
 }
 
 function buildUrl(path: string, query?: Query): string {
@@ -69,7 +73,7 @@ function errorFrom(status: number, body: unknown): ApiError {
 }
 
 async function send(url: string, options: RequestOptions, token?: string): Promise<Response> {
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = { Accept: options.accept ?? "application/json" };
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   if (token) headers.Authorization = `Bearer ${token}`;
   try {
@@ -133,9 +137,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
   }
 
+  if (options.text && response.ok) return (await response.text()) as T;
   const body = await parseBody(response);
   if (!response.ok) throw errorFrom(response.status, body);
   return body as T;
+}
+
+/** For endpoints that produce text rather than JSON, such as the CSV exports. */
+export function requestText(path: string, options: RequestOptions = {}): Promise<string> {
+  return request<string>(path, { accept: "text/csv, text/plain, application/json", ...options, text: true });
 }
 
 /** For the many endpoints that wrap their payload in ApiResponse<T>. */

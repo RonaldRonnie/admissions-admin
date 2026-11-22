@@ -13,6 +13,16 @@ import { LoginPage } from "./pages/LoginPage";
 import { RoleTemplatesPage } from "./pages/RoleTemplatesPage";
 import { UserAccessPage } from "./pages/UserAccessPage";
 import { UsersPage } from "./pages/UsersPage";
+import { AcademicCalendarPage } from "./pages/org/AcademicCalendarPage";
+import { CoursesPage } from "./pages/org/CoursesPage";
+import { CourseUnitsPage } from "./pages/org/CourseUnitsPage";
+import { DepartmentsPage } from "./pages/org/DepartmentsPage";
+import { SchoolsPage } from "./pages/org/SchoolsPage";
+import { ReportsPage } from "./pages/oversight/ReportsPage";
+import { SystemHealthPage } from "./pages/oversight/SystemHealthPage";
+import { ClassroomsPage } from "./pages/reference/ClassroomsPage";
+import { ExaminationsPage } from "./pages/reference/ExaminationsPage";
+import { LookupsPage } from "./pages/reference/LookupsPage";
 
 function RequireSession({ children }: { children: ReactNode }) {
   const { session } = useAuth();
@@ -43,6 +53,16 @@ export function App() {
           <Route path="access/catalog" element={<CatalogPage />} />
           <Route path="campuses" element={<CampusesPage />} />
           <Route path="intakes" element={<IntakesPage />} />
+          <Route path="schools" element={<SchoolsPage />} />
+          <Route path="departments" element={<DepartmentsPage />} />
+          <Route path="courses" element={<CoursesPage />} />
+          <Route path="course-units" element={<CourseUnitsPage />} />
+          <Route path="calendar" element={<AcademicCalendarPage />} />
+          <Route path="classrooms" element={<ClassroomsPage />} />
+          <Route path="lookups" element={<LookupsPage />} />
+          <Route path="examinations" element={<ExaminationsPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="health" element={<SystemHealthPage />} />
           <Route path="audit" element={<AuditLogPage />} />
           <Route path="account" element={<AccountPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
